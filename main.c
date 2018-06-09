@@ -42,14 +42,18 @@ static void dts_kill(struct net *net, const struct dts_inet *src, const struct d
 	struct sock *sk = NULL;
 
 	if (!src->ipv6) {
-		sk = inet_lookup(net,
-			&tcp_hashinfo, NULL, 0,
+		sk = inet_lookup(net, &tcp_hashinfo,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+			NULL, 0,
+#endif
 			(__be32)dst->addr[0], htons(dst->port),
 			(__be32)src->addr[0], htons(src->port), 0);
 		if (!sk) return;
 	} else {
-		sk = inet6_lookup(net,
-			&tcp_hashinfo, NULL, 0,
+		sk = inet6_lookup(net, &tcp_hashinfo,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+			NULL, 0,
+#endif
 			(const struct in6_addr *)dst->addr, htons(dst->port),
 			(const struct in6_addr *)src->addr, htons(src->port), 0);
 		if (!sk) return;
@@ -58,7 +62,12 @@ static void dts_kill(struct net *net, const struct dts_inet *src, const struct d
 	printk("DTS: killing sk:%p (%s -> %s) state %d\n", sk, src->p, dst->p, sk->sk_state);
 
 	if (sk->sk_state == TCP_TIME_WAIT) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
 		inet_twsk_deschedule_put(inet_twsk(sk));
+#else
+		inet_twsk_deschedule(inet_twsk(sk), &tcp_death_row);
+		inet_twsk_put(inet_twsk(sk));
+#endif
 	} else {
 		tcp_done(sk);
 		sock_put(sk);
