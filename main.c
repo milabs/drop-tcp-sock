@@ -132,7 +132,12 @@ static ssize_t dts_proc_write(struct file *file, const char __user *buf, size_t 
 	}
 
 	p[ret = size] = 0;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	dts_process(PDE_DATA(file_inode(file)), p);
+#else
+	dts_process(PDE(file->f_path.dentry->d_inode)->data, p);
+#endif
 
 out_free:
 	kfree(p);
@@ -162,7 +167,35 @@ static void dts_pernet_exit(struct net* net)
 	remove_proc_entry(DTS_PDE_NAME, net->proc_net);
 }
 #else
-# error XXX
+static int dts_pernet_init(struct net *net)
+{
+	struct dts_pernet *dts = NULL;
+
+	dts = kzalloc(sizeof(*dts), GFP_KERNEL);
+	if (!dts) return -ENOMEM;
+
+	dts->net = net;
+	dts->pde = proc_create_data(DTS_PDE_NAME, 0600, net->proc_net, &dts_proc_fops, dts);
+	if (!dts->pde) {
+		kfree(dts);
+		return -ENOMEM;
+	}
+
+	if (net_assign_generic(net, dts_pernet_id, dts)) {
+		kfree(dts);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+static void dts_pernet_exit(struct net* net)
+{
+	struct dts_pernet *dts = net_generic(net, dts_pernet_id);
+	net_assign_generic(net, dts_pernet_id, NULL);
+	BUG_ON(!dts->pde);
+	remove_proc_entry(DTS_PDE_NAME, net->proc_net);
+	kfree(dts);
+}
 #endif
 
 static struct pernet_operations dts_pernet_ops = {
@@ -188,7 +221,7 @@ static inline void dts_unregister_pernet(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
 	unregister_pernet_subsys(&dts_pernet_ops);
 #else
-	unregister_pernet_gen_subsys(&dts_pernet_id, &dts_pernet_ops);
+	unregister_pernet_gen_subsys(dts_pernet_id, &dts_pernet_ops);
 #endif
 }
 
