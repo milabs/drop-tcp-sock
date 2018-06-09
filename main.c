@@ -152,7 +152,7 @@ static int dts_pernet_init(struct net *net)
 {
 	struct dts_pernet *dts = net_generic(net, dts_pernet_id);
 	dts->net = net;
-	dts->pde = proc_create_data(DTS_PDE_NAME, 0777, net->proc_net, &dts_proc_fops, dts);
+	dts->pde = proc_create_data(DTS_PDE_NAME, 0600, net->proc_net, &dts_proc_fops, dts);
 	return !dts->pde;
 }
 static void dts_pernet_exit(struct net* net)
