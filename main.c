@@ -25,6 +25,12 @@
 
 #define DTS_PDE_NAME "tcpdropsock"
 
+struct dts_data {
+	uint32_t len;
+	uint32_t total_len;
+	char data[0];
+};
+
 struct dts_pernet {
 	struct net *net;
 	struct proc_dir_entry *pde;
@@ -90,11 +96,12 @@ static int dts_pton(struct dts_inet *in)
 	return kstrtou16(end, 10, &in->port);
 }
 
-static void dts_process(struct dts_pernet *dts, const char *p)
+static void dts_process(struct dts_pernet *dts, struct dts_data *d)
 {
+	char *p = d->data;
 	struct dts_inet src, dst;
 
-	while (*p) {
+	while (*p && p < d->data + d->len) {
 		while (*p && isspace(*p)) p++; if (!*p) return; // skip spaces
 		src.p = p;
 		while (*p && !isspace(*p)) p++; if (!*p) return; // skip non-spaces
@@ -106,48 +113,58 @@ static void dts_process(struct dts_pernet *dts, const char *p)
 		if ((dts_pton(&src) || dts_pton(&dst)) || (src.ipv6 != src.ipv6))
 			return;
 
-		dts_kill(dts->net, &src, &dst);
+		dts_kill(dts->net, &src, &dst), p++;
 	}
+}
+
+static int dts_proc_open(struct inode *inode, struct file *file)
+{
+	struct dts_data *p = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!p) return -ENOMEM;
+	p->total_len = PAGE_SIZE - sizeof(*p);
+	inode->i_private = p;
+	return 0;
 }
 
 static ssize_t dts_proc_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
 {
-	ssize_t ret;
-	char *p = NULL;
-
-	if (size > PAGE_SIZE * 16) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	p = kmalloc(size + 1, GFP_KERNEL);
-	if (!p) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	if (copy_from_user(p, buf, size)) {
-		ret = -EFAULT;
-		goto out_free;
-	}
-
-	p[ret = size] = 0;
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	dts_process(PDE_DATA(file_inode(file)), p);
+	struct dts_data *d = file_inode(file)->i_private;
 #else
-	dts_process(PDE(file->f_path.dentry->d_inode)->data, p);
+	struct dts_data *d = file->f_path.dentry->d_inode->i_private;
 #endif
 
-out_free:
-	kfree(p);
-out:
-	return ret;
+	if (d->len + size > d->total_len) {
+		struct dts_data *dnew = krealloc(d, d->total_len + sizeof(*d) + PAGE_SIZE, GFP_KERNEL);
+		if (!dnew) return -ENOMEM;
+		(d = dnew)->total_len += PAGE_SIZE;
+	}
+
+	if (copy_from_user(d->data + d->len, buf, size))
+		return -EFAULT;
+
+	d->len += size;
+	d->data[min(d->len, d->total_len - 1)] = 0;
+
+	return size;
+}
+
+static int dts_proc_release(struct inode *inode, struct file *file)
+{
+	struct dts_data *d = inode->i_private;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+	dts_process(PDE_DATA(file_inode(file)), d);
+#else
+	dts_process(PDE(file->f_path.dentry->d_inode)->data, d);
+#endif
+	return kfree(d), 0;
 }
 
 static const struct file_operations dts_proc_fops = {
 	.owner = THIS_MODULE,
+	.open = dts_proc_open,
 	.write = dts_proc_write,
+	.release = dts_proc_release,
 };
 
 static int dts_pernet_id = 0;
