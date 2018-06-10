@@ -11,7 +11,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/version.h>
-#include <linux/kallsyms.h>
 #include <linux/proc_fs.h>
 #include <linux/ctype.h>
 #include <linux/inet.h>
