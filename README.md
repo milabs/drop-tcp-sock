@@ -4,6 +4,12 @@ This module allows one to drop TCP connections and can be usefull for killing `T
 
 # usage
 
+First compile and load the module:
+~~~
+make
+insmod ./drop-tcp-sock.ko
+~~~
+
 Single socket killing:
 ~~~
 # netstat -n | grep WAIT
