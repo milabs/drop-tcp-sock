@@ -22,6 +22,11 @@
 #include <net/inet_hashtables.h>
 #include <net/inet6_hashtables.h>
 
+#ifndef CONFIG_IPV6
+# define in6_pton(args...) 0
+# define inet6_lookup(args...) NULL
+#endif
+
 #define DTS_PDE_NAME "tcpdropsock"
 
 struct dts_data {
