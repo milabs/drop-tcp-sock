@@ -12,7 +12,7 @@ $ sudo insmod drop-tcp-sock.ko
 
 Single socket killing:
 ~~~
-# netstat -n | grep WAIT
+# netstat -n -t | grep WAIT
 tcp        0      0 127.0.0.1:50866             127.0.0.1:22                TIME_WAIT
 
 # echo "127.0.0.1:50866 127.0.0.1:22" >/proc/net/tcpdropsock
@@ -20,12 +20,12 @@ tcp        0      0 127.0.0.1:50866             127.0.0.1:22                TIME
 
 Multiple sockets killing:
 ~~~
-# netstat -n | grep WAIT | awk '{print $4"\t"$5}'
+# netstat -n -t | grep WAIT | awk '{print $4"\t"$5}'
 127.0.0.1:41278	127.0.0.1:22
 127.0.0.1:41276	127.0.0.1:22
 127.0.0.1:41274	127.0.0.1:22
 
-# netstat -n | grep WAIT | awk '{print $4"\t"$5}' >/proc/net/tcpdropsock
+# netstat -n -t | grep WAIT | awk '{print $4"\t"$5}' >/proc/net/tcpdropsock
 ~~~
 
 # features
@@ -40,4 +40,4 @@ Original idea: [Roman Arutyunyan](https://github.com/arut)
 
 This module implementation: [Ilya V. Matveychikov](https://github.com/milabs)
 
-2018
+2018, 2019, 2020
