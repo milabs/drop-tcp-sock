@@ -105,6 +105,8 @@ static void dts_process(struct dts_pernet *dts, struct dts_data *d)
 	char *p = d->data;
 	struct dts_inet src, dst;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
 	while (*p && p < d->data + d->len) {
 		while (*p && isspace(*p)) p++; if (!*p) return; // skip spaces
 		src.p = p;
@@ -119,6 +121,7 @@ static void dts_process(struct dts_pernet *dts, struct dts_data *d)
 
 		dts_kill(dts->net, &src, &dst), p++;
 	}
+#pragma GCC diagnostic pop
 }
 
 static int dts_proc_open(struct inode *inode, struct file *file)
