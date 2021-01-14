@@ -114,7 +114,7 @@ static void dts_process(struct dts_pernet *dts, struct dts_data *d)
 		dst.p = p;
 		while (*p && !isspace(*p)) p++; if (!*p) return; // skip non-spaces
 
-		if ((dts_pton(&src) || dts_pton(&dst)) || (src.ipv6 != src.ipv6))
+		if ((dts_pton(&src) || dts_pton(&dst)) || (src.ipv6 != dst.ipv6))
 			break;
 
 		dts_kill(dts->net, &src, &dst), p++;
