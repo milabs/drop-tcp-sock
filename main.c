@@ -165,12 +165,20 @@ static int dts_proc_release(struct inode *inode, struct file *file)
 	} return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static const struct proc_ops dts_proc_fops = {
+	.proc_open = dts_proc_open,
+	.proc_write = dts_proc_write,
+	.proc_release = dts_proc_release,
+};
+#else
 static const struct file_operations dts_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = dts_proc_open,
 	.write = dts_proc_write,
 	.release = dts_proc_release,
 };
+#endif
 
 static int dts_pernet_id = 0;
 
